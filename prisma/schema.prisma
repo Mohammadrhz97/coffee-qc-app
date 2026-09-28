@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Cafe {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  manager   String?
+  phone     String?
+  region    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  equipment   Equipment?
+  coffeeLines CoffeeLine[]
+  qcVisits    QCVisit[]
+
+  @@index([name])
+  @@index([region])
+}
+
+model Equipment {
+  id String @id @default(cuid())
+
+  espressoMachineBrand String?
+  espressoMachineModel String?
+  grinderBrand         String?
+  grinderModel         String?
+
+  cafeId String @unique
+  cafe   Cafe   @relation(fields: [cafeId], references: [id], onDelete: Cascade)
+}
+
+model CoffeeLine {
+  id   String @id @default(cuid())
+  name String
+
+  cafeId String
+  cafe   Cafe @relation(fields: [cafeId], references: [id], onDelete: Cascade)
+
+  qcVisits QCVisit[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cafeId])
+}
+
+model QCVisit {
+  id String @id @default(cuid())
+
+  cafeId       String
+  coffeeLineId String
+
+  cafe       Cafe       @relation(fields: [cafeId], references: [id], onDelete: Cascade)
+  coffeeLine CoffeeLine @relation(fields: [coffeeLineId], references: [id], onDelete: Cascade)
+
+  // ─────────────────────────────────────
+  // Visit
+  // ─────────────────────────────────────
+
+  waterTDS Int?
+
+  // ─────────────────────────────────────
+  // Customer Shot
+  // ─────────────────────────────────────
+
+  customerDose           Float?
+  customerExtractionMass Float?
+  customerTime           Float?
+  customerTemperature    Float?
+
+  customerExtractionPressure Float?
+
+  customerPreInfusionEnabled  Boolean @default(false)
+  customerPreInfusionPressure Float?
+  customerPreInfusionDuration Float?
+
+  customerPostInfusionEnabled  Boolean @default(false)
+  customerPostInfusionPressure Float?
+  customerPostInfusionDuration Float?
+
+  // ─────────────────────────────────────
+  // Evaluation
+  // ─────────────────────────────────────
+
+  extraction String?
+  body       String?
+  acidity    String?
+  sweetness  String?
+  bitterness String?
+
+  tastingNotes String?
+
+  // ─────────────────────────────────────
+  // Diagnosis
+  // ─────────────────────────────────────
+
+  diagnosis String?
+
+  // ─────────────────────────────────────
+  // My Adjustment / Adjusted Shot
+  // ─────────────────────────────────────
+
+  adjustedDose           Float?
+  adjustedExtractionMass Float?
+  adjustedTime           Float?
+  adjustedTemperature    Float?
+
+  adjustedExtractionPressure Float?
+
+  adjustedPreInfusionEnabled  Boolean @default(false)
+  adjustedPreInfusionPressure Float?
+  adjustedPreInfusionDuration Float?
+
+  adjustedPostInfusionEnabled  Boolean @default(false)
+  adjustedPostInfusionPressure Float?
+  adjustedPostInfusionDuration Float?
+
+  // ─────────────────────────────────────
+  // Final Result
+  // ─────────────────────────────────────
+
+  notes       String?
+  finalStatus String?
+
+  // ─────────────────────────────────────
+  // Timestamps
+  // ─────────────────────────────────────
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cafeId])
+  @@index([coffeeLineId])
+  @@index([createdAt])
+}
