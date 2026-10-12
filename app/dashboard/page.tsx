@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
-import type { Cafe } from "@/lib/types";
+import type { Cafe, RecentVisit } from "@/lib/types";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -28,35 +28,42 @@ export default function DashboardPage() {
   const [cafes, setCafes] = useState<DashboardCafe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [recentVisits, setRecentVisits] = useState<RecentVisit[]>([]);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function fetchCafes() {
+    async function fetchData() {
       try {
-        const response = await fetch("/api/cafes");
+        const [cafesRes, visitsRes] = await Promise.all([
+          fetch("/api/cafes"),
+          fetch("/api/qc-visits/recent"),
+        ]);
 
-        if (!response.ok) {
-          throw new Error("خطا در دریافت اطلاعات کافه‌ها");
-        }
+        if (!cafesRes.ok) throw new Error("خطا در دریافت اطلاعات کافه‌ها");
 
-        const data: DashboardCafe[] = await response.json();
+        const cafesData: DashboardCafe[] = await cafesRes.json();
+        const visitsData: RecentVisit[] = visitsRes.ok
+          ? await visitsRes.json()
+          : [];
 
         if (cancelled) return;
 
-        setCafes(data);
+        setCafes(cafesData);
+        setRecentVisits(visitsData);
         setError("");
-        setLoading(false);
       } catch (err) {
         if (cancelled) return;
-
         console.error(err);
         setError("دریافت اطلاعات داشبورد با مشکل مواجه شد.");
-        setLoading(false);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
-    fetchCafes();
+    fetchData();
 
     return () => {
       cancelled = true;
@@ -67,12 +74,37 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-5xl">
-        <div className="glass rounded-[28px] p-12 text-center">
-          <div className="mx-auto h-12 w-12 animate-pulse rounded-2xl bg-white/[0.06]" />
-          <p className="mt-4 text-sm text-white/45">
-            در حال دریافت اطلاعات داشبورد...
-          </p>
+      <div className="mx-auto flex min-h-[60vh] max-w-5xl items-center justify-center px-4">
+        <div className="glass relative w-full max-w-md overflow-hidden rounded-[32px] border border-white/[0.08] px-8 py-10 text-center shadow-[0_25px_80px_rgba(0,0,0,0.35)]">
+          {/* Glow */}
+          <div className="pointer-events-none absolute -top-24 left-1/2 h-48 w-48 -translate-x-1/2 rounded-full bg-[#E17729]/10 blur-3xl" />
+
+          {/* Spinner */}
+          <div className="relative mx-auto flex h-16 w-16 items-center justify-center">
+            <div className="absolute inset-0 rounded-full border border-[#E17729]/10" />
+
+            <div className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-[#E17729] border-r-[#E17729]/30" />
+
+            <div className="h-2.5 w-2.5 rounded-full bg-[#E17729] shadow-[0_0_18px_rgba(225,119,41,0.8)]" />
+          </div>
+
+          {/* Text */}
+          <div className="relative mt-6">
+            <h3 className="text-sm font-semibold text-white/80">
+              در حال آماده‌سازی داشبورد
+            </h3>
+
+            <p className="mt-2 text-xs leading-6 text-white/35">
+              اطلاعات داشبورد در حال دریافت است...
+            </p>
+          </div>
+
+          {/* Loading dots */}
+          <div className="relative mt-5 flex justify-center gap-1.5">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#E17729]/70" />
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#E17729]/50 [animation-delay:150ms]" />
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#E17729]/30 [animation-delay:300ms]" />
+          </div>
         </div>
       </div>
     );
@@ -217,38 +249,76 @@ export default function DashboardPage() {
             <h2 className="text-base font-semibold">
               تاریخچه اخیر کنترل کیفیت
             </h2>
-
             <p className="mt-1 text-xs text-white/30">
               آخرین بازدیدهای کنترل کیفیت
             </p>
           </div>
-
           <Link href="/reports" className="text-xs font-medium text-[#E17729]">
             مشاهده همه ←
           </Link>
         </div>
 
-        <div className="glass rounded-[28px] p-8 text-center md:p-12">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.05] text-xl text-white/30">
-            ▤
+        {recentVisits.length === 0 ? (
+          // Empty state (همون کد قبلی)
+          <div className="glass rounded-[28px] p-8 text-center md:p-12">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.05] text-xl text-white/30">
+              ▤
+            </div>
+            <p className="mt-4 text-sm font-medium text-white/75">
+              هنوز گزارشی ثبت نشده است
+            </p>
+            <p className="mx-auto mt-2 max-w-xs text-xs leading-5 text-white/30">
+              برای ایجاد اولین گزارش کنترل کیفیت، یک بازدید جدید شروع کنید.
+            </p>
+            <Link
+              href="/qc/new"
+              className="mt-5 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2.5 text-xs font-medium text-white/60 transition hover:border-[#E17729]/40 hover:bg-[#E17729]/10 hover:text-[#E17729]"
+            >
+              <span className="text-base">+</span>
+              بازدید جدید کنترل کیفیت
+            </Link>
           </div>
+        ) : (
+          // لیست بازدیدهای اخیر
+          <div className="space-y-2">
+            {recentVisits.map((visit) => (
+              <Link
+                key={visit.id}
+                href={`/reports/${visit.id}`}
+                className="glass group flex items-center justify-between rounded-[22px] p-4 transition hover:border-[#E17729]/30 hover:bg-white/[0.07]"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#E17729]/15 bg-[#E17729]/[0.07] text-base">
+                    ☕
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-white/85">
+                      {visit.cafe.name}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-white/35">
+                      {visit.coffeeLine.name}
+                      {visit.extraction && (
+                        <>
+                          <span className="mx-1.5 text-white/15">·</span>
+                          {visit.extraction}
+                        </>
+                      )}
+                    </p>
+                  </div>
+                </div>
 
-          <p className="mt-4 text-sm font-medium text-white/75">
-            هنوز گزارشی ثبت نشده است
-          </p>
-
-          <p className="mx-auto mt-2 max-w-xs text-xs leading-5 text-white/30">
-            برای ایجاد اولین گزارش کنترل کیفیت، یک بازدید جدید شروع کنید.
-          </p>
-
-          <Link
-            href="/qc/new"
-            className="mt-5 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2.5 text-xs font-medium text-white/60 transition hover:border-[#E17729]/40 hover:bg-[#E17729]/10 hover:text-[#E17729]"
-          >
-            <span className="text-base">+</span>
-            بازدید جدید کنترل کیفیت
-          </Link>
-        </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="text-[10px] text-white/30">
+                    {getRelativeDate(visit.createdAt)}
+                  </span>
+                  <span className="text-[#E17729] opacity-0 transition group-hover:opacity-100">
+                    →
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

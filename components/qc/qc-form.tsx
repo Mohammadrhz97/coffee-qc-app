@@ -27,22 +27,34 @@ type ShotData = {
 
 const steps = ["شات فعلی کافه", "ارزیابی", "تشخیص", "تنظیم من", "نتیجه نهایی"];
 
-const extractionOptions = ["کم", "متعادل", "زیاد"];
-
-const levelOptions = ["کم", "متعادل", "زیاد"];
-
 const diagnosisOptions = [
-  "کم‌استخراج‌شده",
-  "بیش‌استخراج‌شده",
-  "جریان سریع",
-  "جریان کند",
-  "چنلینگ",
-  "بادی کم",
-  "تلخی زیاد",
-  "شیرینی کم",
-  "اسیدیته زیاد",
-  "مشکل دما",
-  "سایر",
+  // ── منفی / مشکلات ──
+  "Under-extracted",
+  "Over-extracted",
+  "Fast flow",
+  "Slow flow",
+  "Channeling",
+  "Low body",
+  "High bitterness",
+  "Low sweetness",
+  "High acidity",
+  "Temperature issue",
+  "Uneven extraction",
+  "Weak crema",
+  "Sour taste",
+  "Harsh finish",
+
+  // ── مثبت ──
+  "Balanced espresso",
+  "Good body",
+  "Good sweetness",
+  "Good acidity",
+  "Clear flavor notes",
+  "Stable flow",
+  "Good crema",
+
+  // ── سایر ──
+  "Other",
 ];
 
 export default function QCForm({ cafe, coffeeLine }: QCFormProps) {
@@ -549,37 +561,28 @@ export default function QCForm({ cafe, coffeeLine }: QCFormProps) {
             </div>
 
             <div className="space-y-5">
-              <EvaluationGroup
+              <EvaluationSlider
                 label="Extraction"
-                options={extractionOptions}
                 value={extraction}
                 onChange={setExtraction}
               />
 
-              <EvaluationGroup
-                label="Body"
-                options={levelOptions}
-                value={body}
-                onChange={setBody}
-              />
+              <EvaluationSlider label="Body" value={body} onChange={setBody} />
 
-              <EvaluationGroup
+              <EvaluationSlider
                 label="Acidity"
-                options={levelOptions}
                 value={acidity}
                 onChange={setAcidity}
               />
 
-              <EvaluationGroup
+              <EvaluationSlider
                 label="Sweetness"
-                options={levelOptions}
                 value={sweetness}
                 onChange={setSweetness}
               />
 
-              <EvaluationGroup
+              <EvaluationSlider
                 label="Bitterness"
-                options={levelOptions}
                 value={bitterness}
                 onChange={setBitterness}
               />
@@ -894,34 +897,35 @@ export default function QCForm({ cafe, coffeeLine }: QCFormProps) {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
-              {["متعادل", "نیازمند پیگیری", "مشکل باقی مانده"].map((option) => {
-                const active = finalStatus === option;
-
-                return (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => setFinalStatus(option)}
-                    className={`rounded-2xl border p-4 text-left transition ${
-                      active
-                        ? "border-[#E17729]/40 bg-[#E17729]/10 text-[#E17729]"
-                        : "border-white/[0.07] bg-white/[0.035] text-white/45 hover:border-white/[0.15]"
-                    }`}
-                  >
-                    <div
-                      className={`mb-3 flex h-9 w-9 items-center justify-center rounded-xl ${
+              {["بدون مشکل", "نیازمند پیگیری", "مشکل باقی مانده"].map(
+                (option) => {
+                  const active = finalStatus === option;
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setFinalStatus(option)}
+                      className={`rounded-2xl border p-4 text-left transition ${
                         active
-                          ? "bg-[#E17729] text-white"
-                          : "bg-white/[0.06] text-white/30"
+                          ? "border-[#E17729]/40 bg-[#E17729]/10 text-[#E17729]"
+                          : "border-white/[0.07] bg-white/[0.035] text-white/45 hover:border-white/[0.15]"
                       }`}
                     >
-                      ✓
-                    </div>
+                      <div
+                        className={`mb-3 flex h-9 w-9 items-center justify-center rounded-xl ${
+                          active
+                            ? "bg-[#E17729] text-white"
+                            : "bg-white/[0.06] text-white/30"
+                        }`}
+                      >
+                        ✓
+                      </div>
 
-                    <p className="text-sm font-medium">{option}</p>
-                  </button>
-                );
-              })}
+                      <p className="text-sm font-medium">{option}</p>
+                    </button>
+                  );
+                },
+              )}
             </div>
 
             <div className="mt-5 rounded-2xl border border-[#E17729]/10 bg-[#E17729]/[0.04] p-4">
@@ -1024,43 +1028,97 @@ export default function QCForm({ cafe, coffeeLine }: QCFormProps) {
 }
 
 /* -------------------------------------------------
-   Evaluation Group
+   Evaluation Slider
 ------------------------------------------------- */
 
-function EvaluationGroup({
+const EVALUATION_LABELS = [
+  { max: 1, labelFa: "کم" },
+  { max: 3, labelFa: "کم تا متوسط" },
+  { max: 5, labelFa: "متوسط" },
+  { max: 7, labelFa: "متوسط تا زیاد" },
+  { max: 9, labelFa: "زیاد" },
+];
+
+function getEvaluationLabel(value: number) {
+  return EVALUATION_LABELS.find((item) => value <= item.max);
+}
+
+function EvaluationSlider({
   label,
-  options,
   value,
   onChange,
 }: {
   label: string;
-  options: string[];
   value: string;
   onChange: (value: string) => void;
 }) {
+  const numericValue = value === "" ? 5 : Number(value);
+  const currentLabel = getEvaluationLabel(numericValue);
+
   return (
     <div>
-      <p className="mb-2 text-xs font-medium text-white/55">{label}</p>
+      {/* Header */}
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="text-xs font-medium text-white/55">{label}</p>
 
-      <div className="grid grid-cols-3 gap-2">
-        {options.map((option) => {
-          const active = value === option;
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-[#E17729]">
+            {numericValue}
+          </span>
 
-          return (
-            <button
-              key={option}
-              type="button"
-              onClick={() => onChange(option)}
-              className={`rounded-xl border px-3 py-3 text-xs font-medium transition ${
-                active
-                  ? "border-[#E17729]/40 bg-[#E17729]/10 text-[#E17729]"
-                  : "border-white/[0.07] bg-white/[0.035] text-white/40 hover:bg-white/[0.06] hover:text-white/70"
-              }`}
-            >
-              {option}
-            </button>
-          );
-        })}
+          <span className="rounded-full border border-[#E17729]/15 bg-[#E17729]/[0.07] px-2.5 py-1 text-[10px] font-medium text-[#E17729]/90">
+            {currentLabel?.labelFa}
+          </span>
+        </div>
+      </div>
+
+      {/* Slider wrapper — dir=ltr تا RTL روش اثر نذاره */}
+      <div className="relative" dir="ltr">
+        {/* Track */}
+        <div className="absolute left-0 right-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-white/[0.06]" />
+
+        {/* Range input */}
+        <input
+          type="range"
+          min={1}
+          max={9}
+          step={1}
+          value={numericValue}
+          onChange={(event) => onChange(event.target.value)}
+          className="
+            relative
+            z-10
+            h-6
+            w-full
+            cursor-pointer
+            appearance-none
+            bg-transparent
+            [&::-webkit-slider-thumb]:h-5
+            [&::-webkit-slider-thumb]:w-5
+            [&::-webkit-slider-thumb]:appearance-none
+            [&::-webkit-slider-thumb]:rounded-full
+            [&::-webkit-slider-thumb]:border-2
+            [&::-webkit-slider-thumb]:border-[#E17729]
+            [&::-webkit-slider-thumb]:bg-white
+            [&::-webkit-slider-thumb]:shadow-[0_0_12px_rgba(225,119,41,0.5)]
+            [&::-moz-range-thumb]:h-5
+            [&::-moz-range-thumb]:w-5
+            [&::-moz-range-thumb]:rounded-full
+            [&::-moz-range-thumb]:border-2
+            [&::-moz-range-thumb]:border-[#E17729]
+            [&::-moz-range-thumb]:bg-white
+          "
+        />
+      </div>
+
+      {/* Labels — dir=ltr که low چپ، high راست */}
+      <div
+        className="mt-2 flex justify-between text-[9px] text-white/25"
+        dir="ltr"
+      >
+        <span>low</span>
+        <span>medium</span>
+        <span>high</span>
       </div>
     </div>
   );

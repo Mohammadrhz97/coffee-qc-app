@@ -25,3 +25,19 @@ export type Cafe = {
   equipment: Equipment | null;
   coffeeLines: CoffeeLine[];
 };
+
+export type RecentVisit = {
+  id: string;
+  createdAt: string;
+  finalStatus: string | null;
+  extraction: string | null;
+  cafe: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  coffeeLine: {
+    id: string;
+    name: string;
+  };
+};
